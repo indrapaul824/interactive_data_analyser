@@ -1,0 +1,47 @@
+---
+title: "FlexBoard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(dplyr)
+library(plotly)
+```
+
+```{r data}
+# Load data
+```
+
+Column {.sidebar data-width=200}
+-----------------------------------------------------------------------
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+
+```
+
+Column {data-width=400}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+
+```
+
