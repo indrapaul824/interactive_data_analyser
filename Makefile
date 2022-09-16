@@ -5,7 +5,7 @@
 #################################################################################
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-DATA_URL := tsiaras/uk-road-safety-accidents-and-vehicles
+DATA_URL := sakshigoyal7/credit-card-customers
 DATA_DIR := $(PROJECT_DIR)/data/raw/
 DATA_PROCESSED_DIR := $(PROJECT_DIR)/data/processed/
 SCRIPT_DIR := $(PROJECT_DIR)/scripts/
@@ -32,17 +32,16 @@ install:
 	@conda install -c conda-forge mamba -y
 	@echo "Installing R dependencies..."
 	@mamba env create -f r-env.yml --force
-	source /home/indrap24/anaconda3/bin/activate data-analyser
-	@conda install jupyter -y
-	@echo "Done! Exporting to r-env.yml..."
-	@mamba env export -n data-analyser > r-env.yml
-	@echo "Done! Activate the environment using 'conda activate data-analyser'"
+# source /home/indrap24/anaconda3/bin/activate data-analyser
+# @conda install jupyter -y
+# @echo "Done! Exporting to r-env.yml..."
+# @mamba env export -n data-analyser > r-env.yml
+# @echo "Done! Activate the environment using 'conda activate data-analyser'"
 
 .IGNORE:
 clean: 
 	@# Help: Clean the data/raw/ directory
 	rm -f $(DATA_DIR)*.csv
-	rm -f $(DATA_DIR)*.zip
 	rm -f $(DATA_PROCESSED_DIR)*.csv
 
 data: clean
