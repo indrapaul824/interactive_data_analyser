@@ -1,47 +1,244 @@
 ---
-title: "FlexBoard"
+title: "Auto-Vis-ML"
 output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
-    vertical_layout: fill
+    social: menu
+    source_code: embed
 runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(shiny)
+library(DT)
 library(dplyr)
 library(plotly)
+library(ggplot2)
 ```
+
 
 ```{r data}
-# Load data
+
+data <- read.csv("./data/raw/BankChurners.csv")
+
 ```
 
-Column {.sidebar data-width=200}
------------------------------------------------------------------------
+
+About
+=====================================  
+SelectData {.sidebar data-width=180}
+-------------------------------------------------------------------
+```{r}
+data.available <- c("BankChurner", "mtcars", "iris", "ToothGrowth", "PlantGrowth", "USArrests")
+selectInput(inputId="datain", label = "Select from available data:", choices = data.available, selected = data.available[1])
+
+```
+Column {data-width=500}
+-------------------------------------------------------------------
+
+### About the Project
+
+#### Automated Data Visualiser and ML Model Trainer
+
+Machine Learning is a complext process that requires fair amount of technical knowledge even to build little dummy models. Our platform "AutoVizML" is a platform built using Shiny and flex-board packages present in R programming language, that helps user to automate the data visualization and model training part. Our platform has the following section:
+
+- Data Selection
+
+	We have two options to select data:
+	
+	- First is to select a dataset from the dropdown menu consisting of list of all available datasets.
+	- Second is the upload button using which the user can update his/her own dataset file in csv format.
+- EDA
+
+	Once a dataset is selected, the user can switch to the EDA section for getting various visualizations.
+
+- Model Training
+
+#### Team Details:
+Indrashis Paul - 19MIM10046
+Raghav Agarwal - 19MIM10024
+
+### About the Selected Data
+```{r}
+renderUI({
+  if (input$datain == "BankChurner") {
+    str1 <- paste("A manager at the bank is disturbed with more and more customers leaving their credit card services. They would really appreciate if one could predict for them who is gonna get churned so they can proactively go to the customer to provide them better services and turn customers' decisions in the opposite direction.")
+    str2 <- paste("This dataset consists of 10,000 customers mentioning their age, salary, marital_status, credit card limit, credit card category, etc. There are nearly 18 features.")
+    str3 <- paste("It has only 16.07% of customers who have churned. Thus, it's a bit difficult to train a model to predict churning customers.")
+    HTML(paste("BankChurner: Customer Credit Card Data<br/>", str1, str2, str3, sep = '<br/>'))
+    
+  } else if (input$datain == "mtcars") {
+    str1 <- paste("This data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973–74 models).")
+    str2 <- paste("This toy version of the dataset consists of only 32 observations and 11 variables.")
+    HTML(paste("mtcars: Motor Trend Car Road Tests<br/>", str1, str2, sep = '<br/>'))
+    
+  } else if (input$datain == "iris") {
+    str1 <- paste("This popular dataset gives the measurements(in centimeters) of the sepal length, sepal width, petal length and petal width, respectively, for 50 flowers from each of 3 species of Iris. The species are Iris setosa, versicolor, and virginica.")
+    str2 <- paste("This is perhaps the best known database to be found in the pattern recognition literature.")
+    HTML(paste("iris: Iris Data Set<br/>", str1, str2, sep = '<br/>'))
+    
+  } else if (input$datain == "ToothGrowth") {
+    str1 <- paste("This data set contains the result from an experiment studying the effect of vitamin C on tooth growth in 60 Guinea pigs.")
+    str2 <- paste("Each animal received one of three dose levels of vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods, (orange juice or ascorbic acid (a form of vitamin C and coded as VC).")
+    HTML(paste("ToothGrowth: The Effect of Vitamin C on Tooth Growth in Guinea Pigs<br/>", str1, str2, sep = '<br/>'))
+    
+  } else if (input$datain == "PlantGrowth") {
+    str1 <- paste("This dataset contains results from an experiment to compare yields (as measured by dried weight of plants) obtained under a control and two different treatment conditions.")
+    str2 <- paste("This toy dataset contains only 30 cases on 2 variables.")
+    HTML(paste("PlantGrowth: The Results from an Experiment on Plant Growth<br/>", str1, str2, sep = '<br/>'))
+    
+  } else if (input$datain == "USArrests") {
+    str1 <- paste("This data set contains statistics, in arrests per 100,000 residents for assault, murder, and rape in each of the 50 US states in 1973.")
+    str2 <- paste("This toy dataset also provides the percent of the population living in urban areas and contains 50 observations on 4 variables.")
+    HTML(paste("USArrests: Violent Crime Rates by US State<br/>", str1, str2, sep = '<br/>'))
+    
+  }
+  
+})
+
+```
+Column {data-width=400}
+-------------------------------------------------------------------
+### Data Details
+```{r}
+renderTable(
+  if (input$datain == "BankChurner") {
+    head(data, 10)
+  } else if (input$datain == "mtcars") {
+    data <- mtcars
+    head(data, 10)
+  } else if (input$datain == "iris") {
+    data <- iris
+    head(data, 10)
+  } else if (input$datain == "ToothGrowth") {
+    data <- ToothGrowth
+    head(data, 10)
+  } else if (input$datain == "PlantGrowth") {
+    data <- PlantGrowth
+    head(data, 10)
+  } else if (input$datain == "USArrests") {
+    data <- USArrests
+    head(data, 10)
+  }
+)
+```
+
+
+
+
+
+EDA Dashboard
+=====================================  
+
+Inputs {.sidebar data-width=200}
+-------------------------------------------------------------------
+```{r}
+renderUI({
+  if (input$datain == "BankChurner") {
+    data <- read.csv("./data/raw/BankChurners.csv")
+  } else if (input$datain == "iris") {
+    data <- iris
+  } else if (input$datain == "ToothGrowth") {
+    data <- ToothGrowth
+  } else if (input$datain == "PlantGrowth") {
+    data <- PlantGrowth
+  } 
+  
+  num_var <- list()
+  cat_var <- list()
+  for (x in colnames(data)) {
+    if ((is.numeric(data[x][1,]))) {
+      num_var <- append(num_var, x)
+    }
+    else {
+      cat_var <- append(cat_var, x)
+    }
+  }
+
+  selectInput(inputId="categorical_variable", label = "Select Categorical Variable:", choices = cat_var, selected = cat_var[1])
+  selectInput(inputId="numeric_variable", label = "Select Numeric Variable:", choices = num_var, selected = num_var[1])
+
+})
+
+```
 
 Column {data-width=400}
------------------------------------------------------------------------
+-------------------------------------------------------------------
 
-### Chart A
-
+### **Box plot** shows the relationship between categorical and numeric variables
 ```{r}
 
+renderPlotly({
+  plot_ly(data,
+              x = ~data[[input$numeric_variable]],
+              color = ~data[[input$categorical_variable]],
+              colors = "Paired",
+              type = "box") %>%
+  layout(title = "",
+         xaxis = list(title = "" ,
+                      zeroline = FALSE))
+})
 ```
 
 Column {data-width=400}
------------------------------------------------------------------------
+-------------------------------------------------------------------
 
-### Chart B
-
+### **Bar chart** shows the distribution of categorical veriable
 ```{r}
 
+renderPlotly({
+  data %>%
+    count(var = data[[input$categorical_variable]], name = "count") %>%
+    plot_ly( x = ~var, y = ~ count, type = "bar", marker = list(color = '#008ae6',
+                           line = list(color = '#008ae6', width = 2)), hoverinfo = "x+y") %>%
+    add_text(text = ~paste0( " (",   scales::percent(count/sum(count)),")"), 
+           textposition = "bottom", 
+           textfont = list(size = 12, color = "white"), 
+           showlegend = FALSE) %>%
+    layout(xaxis = list(title = ""), yaxis = list(title = ""))
+    
+})
 ```
 
-### Chart C
-
+### **Histogram** shows the distribution of numeric variable
 ```{r}
 
+renderPlotly({
+  plot_ly(x = data[[input$numeric_variable]], type = "histogram",  marker = list(color = "#008ae6",
+                            line = list(color = "darkgray",
+                                        width = 1)))
+})
 ```
 
+Auto ML Platform
+=====================================  
+Inputs {.sidebar data-width=200}
+-------------------------------------------------------------------
+```{r}
+```
+
+Row
+-------------------------------------
+    
+### Chart 1
+    
+```{r}
+```
+ 
+### Chart 2
+    
+```{r}
+``` 
+
+Row
+-------------------------------------
+    
+### Chart 3
+    
+```{r}
+```
+    
+### Chart 4
+
+```{r}
+```
