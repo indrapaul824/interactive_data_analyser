@@ -1,2 +1,5 @@
 data/raw
 .Rproj.user
+.lintr
+.Rhistory
+.RData
