@@ -13,5 +13,17 @@ dependencies:
   - r-flexdashboard
   - r-plotly
   - r-shiny
+  - r-shinydashboard
+  - r-shinythemes
+  - r-shinycssloaders
+  - r-rio
+  - r-stargazer
+  - r-tidyverse
+  - r-rmarkdown
+  - r-maps
+  - r-leaflet
   - r-irkernel
   - r-languageserver
+  - r-caret
+  - r-ggplot2
+  - r-corrplot
