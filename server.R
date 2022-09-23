@@ -174,9 +174,6 @@ shinyServer(
     f <- reactive({
       as.formula(paste(input$target, "~."))
     })
-    g <- reactive({
-      as.formula(paste(input$target))
-    })
     # create feature selection
     output$featureSelectInput <- renderUI({
       selectInput('featureSelect', 'Select features to generate model', 
@@ -240,19 +237,55 @@ shinyServer(
       runModel()
     })
 
+    ## Prediction Model Evaluation
     evalModel <- function(testData, features) {
       predictions <- predict(runModel(), select(testData, one_of(features)))
       # if length or predictions does not match length of testData, remove incomplete cases
       if (length(predictions) != nrow(testData))
-        truthes <- testData[complete.cases(testData),]$Survived
+        truthes <- testData[complete.cases(testData),]$input$target
       else
-        truthes <- testData$Survived
+        truthes <- testData$input$target
       # generate confusion matrix
-      confusionMatrix(predictions, truthes)
+      if (input$mltype == "clf") {
+        # Convert target variable from numeric to factor
+        truthes <- as.factor(truthes)
+        confusionMatrix(predictions, truthes)
+      }
+      else {
+        # Convert target variable from factor to numeric
+        truthes <- as.numeric(truthes)
+        # calculate RMSE
+        rmse <- sqrt(mean((truthes - predictions)^2))
+        # calculate R^2
+        r2 <- cor(truthes, predictions)^2
+        # calculate MAE
+        mae <- mean(abs(truthes - predictions))
+        # calculate MAPE
+        mape <- mean(abs((truthes - predictions)/truthes))
+        # calculate MPE
+        mpe <- mean((truthes - predictions)/truthes)
+        # calculate MASE
+        mase <- mean(abs(truthes - predictions))/mean(abs(diff(truthes)))
+        # calculate AIC
+        aic <- AIC(runModel())
+        # calculate BIC
+        bic <- BIC(runModel())
+        # calculate adjusted R^2
+        adjr2 <- 1 - (1 - r2)*(nrow(testData) - 1)/(nrow(testData) - length(features) - 1)
+        # return results
+        c(rmse, r2, mae, mape, mpe, mase, aic, bic, adjr2)
+      }
     }
     # accuracy of final model
     output$inSampleAccuracy <- renderPrint({
-      evalModel(dataInput(), input$featureSelect)
+      df <- if (input$mltype == "clf") {
+        # Convert target variable from numeric to factor
+        data()[, input$target] <- as.factor(data()[, input$target])
+        data()
+      }
+      else
+        data()
+      evalModel(df, input$featureSelect)
     })
     output$outOfSampleAccuracy <- renderPrint({
       evalModel(dataInput()$pv, input$featureSelect)
