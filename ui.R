@@ -2,7 +2,6 @@ library(shiny)
 library(DT)
 
 # constants
-kaggle.url <- 'https://www.kaggle.com/c/titanic'
 github.url <- 'https://github.com/IndraP24/interactive_data_analyser'
 
 # Disable shiny widget, from:
@@ -48,7 +47,7 @@ shinyUI(
                    tags$li('Predict outcomes for test data')
                  ),
                  br(), br(),
-                 h4('Source Code and data available'),
+                 h4('Source Code and some sample data available'),
                  a(github.url),
                  br(), br(),
                  br(), br()
@@ -63,7 +62,9 @@ shinyUI(
             sidebarPanel(
               fileInput(inputId = "upload",
                         label = "Upload data (.csv file only!)",
-                        accept = c(".csv"))
+                        accept = c(".csv")),
+              br(),
+              uiOutput("target")
             ),
             mainPanel(
                   h4('Data Uploaded:'),
@@ -80,24 +81,21 @@ shinyUI(
       # TODO need doc as to what you are looking at
       # separate outcomes from predictors
       tabPanel('2. Data Summary',
+        titlePanel(p("Data Summary", style = "color:#3474A7")),
         sidebarLayout(
           sidebarPanel(
-  #          sliderInput('sliderTrainValidation', 
-  #            'Select percentage of training sample to use for validation', 
-  #            min=0, max=50, value=40),
-            radioButtons('RawOrProc', 'Which data for summary?',
-              c('Processed'='p', 'Raw Data'='r')
-            ),
-            radioButtons('SummaryOf', 'Display data summary for predictors of:',
-              c('All data (Training + Validation + Test)'='a', 
-                'Training + Validation'='tv', 'Training only'='t')
-            )
+            uiOutput(outputId = "dropSelected"),
+            actionButton("drop", "Drop Columns"),
+            br(), br(),
+            p("Press the button below to conduct basic preprocessing:"),
+            p("1. Remove rows with missing data, 2. Label Encode character data"),
+            actionButton("preprocess", "Preprocess Data")
           ),
           mainPanel(
-            h4('Predictors'),
-            verbatimTextOutput('PredictorsSummaryOut'),
-            h4('Outcome (Training and Validation only)'),
-            verbatimTextOutput('OutcomeSummaryOut')
+            h4('Features'),
+            tableOutput('PredictorsSummaryOut'),
+            h4('Target'),
+            tableOutput('OutcomeSummaryOut')
           )
         )
       ),
@@ -138,15 +136,10 @@ shinyUI(
               multiple=TRUE
             ),
             uiOutput('featureSelectInput'),
-            selectInput('machLearnAlgorithm', 
-              'Select the model or machine learning algorithm',
-              choices= c('Generalized Linear Model (logit)' = 'glm',
-                'Random Forests (may take a few minutes)' = 'rf',
-                'Gradient Boosting' = 'gbm',
-                'Boosted Generalized Linear Model' = 'glmboost',
-                'Linear Discriminant Analysis' = 'lda',
-                'Naive Bayes' = 'nb'), 
-              selected='glm')
+            radioButtons('mltype', "Choose the type of Machine Learning:",
+                         choices = c("Regression"="reg", "Classification"="clf"), 
+                         selected = "reg"),
+            uiOutput('machAlgorithm')
           ),
           mainPanel(
             h4('Final model fit'),
