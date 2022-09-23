@@ -136,22 +136,17 @@ shinyUI(
               multiple=TRUE
             ),
             uiOutput('featureSelectInput'),
-            selectInput('fracTrain', 'Select the fraction of Training Data',
-              choices=c(
-                "90%" = 0.90,
-                "85%" = 0.85,
-                "80%" = 0.80,
-                "75%" = 0.75,
-                "70%" = 0.70
-              ),
-              selected=0.90
-            ),
+            sliderInput("fracTrain", label = h4("Train Split %"), min=10, max=100, value=75),
+            br(),
             radioButtons('mltype', "Choose the type of Machine Learning:",
                          choices = c("Regression"="reg", "Classification"="clf"), 
                          selected = "reg"),
             uiOutput('machAlgorithm')
           ),
           mainPanel(
+            h4('Training / Test Split'),
+            verbatimTextOutput('cntTrain'),
+            verbatimTextOutput('cntTest'),
             h4('Final model fit'),
             verbatimTextOutput('finalModel'),
             h4('Summary'),
