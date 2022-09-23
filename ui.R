@@ -161,23 +161,19 @@ shinyUI(
           column(6,
             wellPanel(
               h4('Estimated In Sample Accuracy (within training data)'),
-              verbatimTextOutput('inSampleAccuracy')
+              verbatimTextOutput('inSampleAccuracy'),
+              uiOutput("inSampleAccuracyPlot")
             )
           ),
           column(6,
             wellPanel(
               h4('Estimated Out of Sample Accuracy (within verification data)'),
-              verbatimTextOutput('outOfSampleAccuracy')
+              verbatimTextOutput('outOfSampleAccuracy'),
+              uiOutput("outOfSampleAccuracyPlot")
             )
           )
         )
-      ),
-  
-      tabPanel('6. Test Data Results',
-        h4('Predicted survival of individuals in the test data set'),
-          tableOutput('testPredictions')
       )
-
     )
   )
 )
