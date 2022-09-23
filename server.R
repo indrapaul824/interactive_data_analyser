@@ -194,20 +194,33 @@ shinyServer(
     })
     
     #split the data into train and test
-    newData <- reactive({
-      df <- data()
-      train_fr <- as.numeric(input$fracTrain)
-      test_fr  <- 1-train_fr
-      sample <- sample(c(TRUE, FALSE), nrow(df), replace=TRUE, prob=c(train_fr,test_fr))
-      train  <- df[sample, ]
-      test   <- df[!sample, ]
-      list(train = train,test = test)
+    splitSlider <- reactive({
+      input$fracTrain / 100
+    })
+    trainRowIndex <- reactive({
+      sample(1:nrow(data()), splitSlider() * nrow(data()))
     })
     
+    trainData <- reactive({
+      train_dt <- data()
+      train_dt <- train_dt[trainRowIndex(),]
+    })
+
+    testData <- reactive({
+      test_dt <- data()
+      test_dt <- test_dt[-trainRowIndex(),]
+    })
+
+    output$cntTrain <- renderText({
+      paste0("Training set: ", nrow(trainData()), " records")
+    })
+    output$cntTest <- renderText({
+      paste0("Test set: ", nrow(testData()), " records")
+    })
 
     # apply model to training set
     applyModel <- function(modelType, features) {
-      df <- newData()$train
+      df <- trainData()
       if (input$mltype == "clf") {
         # df$input$target <- as.factor(df$input$target)
         # Convert target variable from numeric to factor
@@ -290,24 +303,26 @@ shinyServer(
     }
     #training data accuracy
     output$inSampleAccuracy <- renderPrint({
+      df <- trainData()
       df <- if (input$mltype == "clf") {
         # Convert target variable from numeric to factor
-        newData()$train[, input$target] <- as.factor(newData()$train[, input$target])
-        newData()$train
+        df[, input$target] <- as.factor(df[, input$target])
+        df
       }
       else
-        newData()$train
+        df
       evalModel(df, input$featureSelect)
     })
     #testing data accuracy
     output$outOfSampleAccuracy <- renderPrint({
+      df <- testData()
       df <- if (input$mltype == "clf") {
         # Convert target variable from numeric to factor
-        newData()$test[, input$target] <- as.factor(newData()$test[, input$target])
-        newData()$test
+        df[, input$target] <- as.factor(df[, input$target])
+        df
       }
       else
-        newData()$test
+        df
       evalModel(df, input$featureSelect)
     })
 
