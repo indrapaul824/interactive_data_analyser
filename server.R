@@ -11,6 +11,8 @@ library(mboost) # for glmboost
 library(klaR)   # for nb
 library(plyr)
 library(dplyr)
+library(psych)
+library(purrr)
 
 
 # Disable shiny widget, from:
@@ -28,51 +30,6 @@ disable <- function(x) {
   x
 }
 
-getProcessData <- function(p) {
-  # read in raw data
-  raw.training.all <- fread(train.url)
-  # handle all missing values - for right now, only use complete cases
-  raw.training.all <- raw.training.all[complete.cases(raw.training.all),]
-  raw.training.outcome <- raw.training.all[,"Survived",with=F]
-  raw.training.predictors <- raw.training.all[,-"Survived",with=F]
-  raw.testing.predictors <- fread(test.url)
-
-
-  # process data by adding factors for Survived, Pclass, Sex, and Embarked
-  process.data <- function(x) {
-    # factorize some variables
-    if ('Survived' %in% colnames(x))
-      x$Survived <- factor(x$Survived, levels=c(0,1), labels=c('No', 'Yes'))
-    x$Pclass <- factor(x$Pclass, levels=c(1,2,3), labels=c('1st', '2nd', '3rd'))
-    x$Sex <- factor(x$Sex, levels=c('male', 'female'), labels=c('male', 'female'))
-    x$Embarked <- factor(x$Embarked, levels=c('C', 'Q', 'S'),
-      labels=c('Cherbourg', 'Queenstown', 'Southampton'))
-    # factorize rest to use caret package for analysis
-    x$Name <- factor(x$Name)
-    x$Ticket <- factor(x$Ticket)
-    x$Cabin <- factor(x$Cabin)
-    x
-  }
-  # process data
-  proc.training.all <- process.data(raw.training.all)
-  proc.training.outcome <- proc.training.all[,"Survived", with=F]
-  proc.training.predictors <- proc.training.all[,-"Survived",with=F]
-  proc.testing.predictors <- process.data(raw.testing.predictors)
-  
-  # create initial training, validation, and training sets
-  inValidation <- createDataPartition(y=proc.training.outcome$Survived, p=p/100, list=FALSE)
-  proc.validation <- proc.training.all[inValidation,]
-  proc.training <- proc.training.all[-inValidation,]
-  proc.testing <- proc.testing.predictors
-  # raw version
-  raw.validation <- raw.training.all[inValidation,]
-  raw.training <- raw.training.all[-inValidation,]
-  raw.testing <- raw.testing.predictors
-  # bundle into list for use
-  list(rtr=raw.training, rv=raw.validation, rte=raw.testing, ptr=proc.training,
-    pv=proc.validation, pte=proc.testing)
-}
-
 shinyServer(
   function(input, output) {
     ## Data Upload
@@ -85,6 +42,10 @@ shinyServer(
              validate("Invalid file; Please upload a .csv file")
       )
     })
+    output$target <- renderUI({
+      selectInput('target', 'Select the Outcome/Target Variable', 
+                  choices=as.list(colnames(dataInput())))
+    })
     output$files <- renderTable(input$upload)
     output$head <- DT::renderDT(
       dataInput(), extensions = 'Buttons', filter = "top", editable=T, rownames=F,
@@ -94,70 +55,76 @@ shinyServer(
         lengthMenu = list(c(10, 50, 100, -1), c(10, 50, 100, "All"))
       )
     )
-
+    
+    encode_ordinal <- function(x, order = unique(x)) {
+      x <- as.numeric(factor(x, levels = order, exclude = NULL))
+      x
+    }
+    
+    data <- reactiveVal()
+    
+    observeEvent(input$upload, ignoreNULL = T, ignoreInit = T, {
+      file1 <- input$upload
+      if (is.null(file1)){return()}
+      data(read.csv(file=file1$datapath))
+    })
+    
+    observeEvent(input$drop, {
+      claim <- data()
+      drop <- c(input$dropCols)
+      claim <- claim[, !names(claim) %in% drop]
+      data(claim)
+    })
+    
+    observeEvent(input$preprocess, {
+      claim <- data()
+      claim <- claim[complete.cases(claim),]
+      colTypes <- map(claim, class)
+      
+      for (col in colnames(claim)) {
+        if (colTypes[col] == 'character') {
+          claim[[col]] <- encode_ordinal(claim[[col]])
+        }
+      }
+      data(claim)
+    })
+    
+    
+    
+    
     ## Data Summary
-    output$PredictorsSummaryOut <- renderPrint({ 
-      summary(
-        if(input$RawOrProc == 'p') {      # proc
-          switch(input$SummaryOf,
-            a = rbind(dataInput()$ptr[,-"Survived",with=F], 
-              dataInput()$pv[,-"Survived",with=F], dataInput()$pte),
-            tv = rbind(dataInput()$ptr[,-"Survived",with=F], 
-              dataInput()$pv[,-"Survived",with=F]),
-            t = dataInput()$ptr[,-"Survived",with=F]
-          )
-        } else {                          # raw
-          switch(input$SummaryOf,
-            a = rbind(dataInput()$rtr[,-"Survived",with=F], 
-              dataInput()$rv[,-"Survived",with=F], dataInput()$rte),
-            tv = rbind(dataInput()$rtr[,-"Survived",with=F], 
-              dataInput()$rv[,-"Survived",with=F]),
-            t = dataInput()$rtr[,-"Survived",with=F]
-          )
-        } 
-      )
+    output$dropSelected <- renderUI({
+      selectInput("dropCols", "Select the Columns you want to drop:",
+                  choices=as.list(colnames(data())), multiple = T)
     })
-    output$OutcomeSummaryOut <- renderPrint({ 
-      summary(
-        if(input$RawOrProc == 'p') {      # proc
-          switch(input$SummaryOf,
-            a = rbind(dataInput()$ptr[,"Survived",with=F], 
-              dataInput()$pv[,"Survived",with=F]),
-            tv = rbind(dataInput()$ptr[,"Survived",with=F], 
-              dataInput()$pv[,"Survived",with=F]),
-            t = rbind(dataInput()$ptr[,"Survived",with=F]) 
-          )
-        } else {                          # raw
-          switch(input$SummaryOf,
-            a = rbind(dataInput()$rtr[,"Survived",with=F], 
-              dataInput()$rv[,"Survived",with=F]),
-            tv = rbind(dataInput()$rtr[,"Survived",with=F], 
-              dataInput()$rv[,"Survived",with=F]),
-            t = rbind(dataInput()$rtr[,"Survived",with=F]) 
-          )
-        } 
-      )
-    })
+    
+    output$PredictorsSummaryOut <- renderTable({
+      describe(data()[, !(names(data()) %in% c(input$target))])
+    }, rownames = T)
+    output$OutcomeSummaryOut <- renderTable({ 
+      describe(data()[input$target])
+    }, rownames = T)
 
+    
+    
     ## Explore Data
     # pairs plot - always
-    xcolsIgnore <- c('PassengerId', 'Name','Ticket', 'Cabin')#, 'Survived')
     output$expPairsPlot <- renderPlot({
-      featurePlot(x=dataInput()$ptr[,-xcolsIgnore, with=F], 
-        y=dataInput()$ptr$Survived, 
+      featurePlot(x=data(), 
+        y=data()[input$target], 
         plot='pairs', auto.key=list(columns=2))
     })
     # generate variable selectors for individual plots
     # ideas from https://gist.github.com/jcheng5/3239667
     output$expXaxisVarSelector <- renderUI({
       selectInput('expXaxisVar', 'Variable on x-axis', 
-        choices=as.list(colnames(dataInput()$ptr)), selected='Pclass')
+        choices=as.list(colnames(data())), selected=colnames(data())[1])
     })
     # generate variable selectors for individual plots
     getYaxisVarSelector <- function(geom) { 
       # wy = wtih y, wo = without y (or disable)
       widget <- selectInput('expYaxisVar', 'Variable on y-axis', 
-        choices=as.list(colnames(dataInput()$ptr)), selected='Sex')
+        choices=as.list(colnames(data())), selected=colnames(data())[2])
       wy <- widget
       woy <- disable(widget)
       switch(geom,
@@ -173,13 +140,13 @@ shinyServer(
     })
     output$expColorVarSelector <- renderUI({
       selectInput('expColorVar', 'Variable to color by', 
-        choices=as.list(c('None', colnames(dataInput()$ptr))),
-        selected='Survived')
+        choices=as.list(c('None', colnames(data()))),
+        selected=input$target)
     })
     # create ggplot statement based on geom
     add_ggplot <- function(geom) {
-      gx <- ggplot(dataInput()$ptr, aes_string(x=input$expXaxisVar))
-      gxy <- ggplot(dataInput()$ptr, aes_string(x=input$expXaxisVar, y=input$expYaxisVar))
+      gx <- ggplot(data(), aes_string(x=input$expXaxisVar))
+      gxy <- ggplot(data(), aes_string(x=input$expXaxisVar, y=input$expYaxisVar))
       switch(geom,
         point = gxy,
         boxplot = gxy,
@@ -204,22 +171,58 @@ shinyServer(
     })
 
     ## Prediction Model
+    f <- reactive({
+      as.formula(paste(input$target, "~."))
+    })
+    g <- reactive({
+      as.formula(paste(input$target))
+    })
     # create feature selection
     output$featureSelectInput <- renderUI({
       selectInput('featureSelect', 'Select features to generate model', 
-        choices=as.list(colnames(dataInput()$ptr[,-"Survived",with=F] )),
-        multiple = TRUE, selected=c('Sex', 'Age', 'Pclass'))
+        choices=as.list(colnames(data()[, !(names(data()) %in% c(input$target))])),
+        multiple = TRUE, selected=c(colnames(data())[1], colnames(data())[2], colnames(data())[3]))
     })
+    output$machAlgorithm <- renderUI({
+        selectInput('machLearnAlgorithm', 
+                    'Select the model or machine learning algorithm',
+                    choices= c('K-Nearest Neighbors' = 'knn',
+                               'Generalized Linear Model (logit)' = 'glm',
+                               'Random Forests (may take a few minutes)' = 'ranger',
+                               'Gradient Boosting' = 'gbm',
+                               'Boosted Generalized Linear Model' = 'glmboost',
+                               'Linear Discriminant Analysis' = 'lda',
+                               'Naive Bayes' = 'nb'), 
+                    selected='knn')
+    })
+    
     # apply model to training set
     applyModel <- function(modelType, features) {
-      if (modelType == 'gbm')
-        train(Survived ~ ., 
-          data=select(dataInput()$ptr, one_of(c('Survived', features))), 
-          method=modelType, preProcess=input$preProcessMethods, verbose=F)
-      else
-        train(Survived ~ ., 
-          data=select(dataInput()$ptr, one_of(c('Survived', features))), 
-          method=modelType, preProcess=input$preProcessMethods)
+      df <- data()
+      if (input$mltype == "clf") {
+        # df$input$target <- as.factor(df$input$target)
+        # Convert target variable from numeric to factor
+        df[[input$target]] <- as.factor(df[[input$target]])
+        if (modelType == 'gbm')
+          train(f(), 
+            data=select(df, one_of(c(input$target, features))), 
+            method=modelType, preProcess=input$preProcessMethods, verbose=F, metric='Accuracy')
+        else
+          train(f(), 
+            data=select(df, one_of(c(input$target, features))), 
+            method=modelType, preProcess=input$preProcessMethods, metric='Accuracy')
+      }
+
+      else {
+        if (modelType == 'gbm')
+          train(f(), 
+            data=select(df, one_of(c(input$target, features))), 
+            method=modelType, preProcess=input$preProcessMethods, verbose=F, metric='RMSE')
+        else
+          train(f(), 
+            data=select(df, one_of(c(input$target, features))), 
+            method=modelType, preProcess=input$preProcessMethods, metric='RMSE')
+      }
     }
     # reactive functions to run and evaluate model
     runModel <- reactive({
@@ -249,7 +252,7 @@ shinyServer(
     }
     # accuracy of final model
     output$inSampleAccuracy <- renderPrint({
-      evalModel(dataInput()$ptr, input$featureSelect)
+      evalModel(dataInput(), input$featureSelect)
     })
     output$outOfSampleAccuracy <- renderPrint({
       evalModel(dataInput()$pv, input$featureSelect)
