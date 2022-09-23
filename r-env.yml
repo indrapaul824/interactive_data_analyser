@@ -29,4 +29,5 @@ dependencies:
   - r-klar
   - r-mboost
   - r-psych
-  - t-purrr
+  - r-purrr
+  - r-yardstick

@@ -162,14 +162,14 @@ shinyUI(
             wellPanel(
               h4('Estimated In Sample Accuracy (within training data)'),
               verbatimTextOutput('inSampleAccuracy'),
-              uiOutput("inSampleAccuracyPlot")
+              plotOutput("inSamplePlot")
             )
           ),
           column(6,
             wellPanel(
               h4('Estimated Out of Sample Accuracy (within verification data)'),
               verbatimTextOutput('outOfSampleAccuracy'),
-              uiOutput("outOfSampleAccuracyPlot")
+              plotOutput("outOfSamplePlot")
             )
           )
         )

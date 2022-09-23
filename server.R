@@ -13,6 +13,8 @@ library(plyr)
 library(dplyr)
 library(psych)
 library(purrr)
+library(pROC)
+library(yardstick)
 
 
 # Disable shiny widget, from:
@@ -287,6 +289,7 @@ shinyServer(
         c(rmse, r2, mae, mase, adjr2)
       }
     }
+
     #training data accuracy
     output$inSampleAccuracy <- renderPrint({
       df <- trainData()
@@ -300,7 +303,7 @@ shinyServer(
       evalModel(df, input$featureSelect)
     })
 
-    output$inSampleAccuracyPlot <- renderPlot({
+    output$inSamplePlot <- renderPlot({
       df <- trainData()
       df <- if (input$mltype == "clf") {
         # Convert target variable from numeric to factor
@@ -309,16 +312,23 @@ shinyServer(
       }
       else
         df
+      predictions <- predict(runModel(), select(df, one_of(input$featureSelect)))
+      truthes <- df[, input$target]
+      truth_predicted <- data.frame(
+        obs = truthes,
+        pred = predictions
+      )
       if (input$mltype == "clf") {
         # plot confusion matrix
-        plot(confusionMatrix(predict(runModel(), select(df, one_of(input$featureSelect))), 
-          as.factor(df[, input$target])))
+        cm <- conf_mat(truth_predicted, obs, pred)
+        autoplot(cm, type='heatmap', scale_fill_gradient(low="#D6EAF8",high = "#2E86C1"), 
+         legend.position = "bottom", legend.title = "Count")
       }
-      else {
-        # plot ROC curve
-        plot(roc(as.numeric(df[, input$target]), predict(runModel(), select(df, one_of(input$featureSelect)))))
-      }
+      else
+        plot(roc(as.numeric(truthes), predictions))
     })
+
+
     #testing data accuracy
     output$outOfSampleAccuracy <- renderPrint({
       df <- testData()
@@ -332,7 +342,7 @@ shinyServer(
       evalModel(df, input$featureSelect)
     })
 
-    output$outOfSampleAccuracyPlot <- renderPlot({
+    output$outOfSamplePlot <- renderPlot({
       df <- testData()
       df <- if (input$mltype == "clf") {
         # Convert target variable from numeric to factor
@@ -341,16 +351,20 @@ shinyServer(
       }
       else
         df
+      predictions <- predict(runModel(), select(df, one_of(input$featureSelect)))
+      truthes <- df[, input$target]
+      truth_predicted <- data.frame(
+        obs = truthes,
+        pred = predictions
+      )
       if (input$mltype == "clf") {
         # plot confusion matrix
-        plot(confusionMatrix(predict(runModel(), select(df, one_of(input$featureSelect))), 
-          as.factor(df[, input$target])))
+        cm <- conf_mat(truth_predicted, obs, pred)
+        autoplot(cm, type='heatmap', scale_fill_gradient(low="#D6EAF8",high = "#2E86C1"), 
+         legend.position = "bottom", legend.title = "Count")
       }
-      else {
-        # plot ROC curve
-        renderPlot(plot(roc(as.numeric(df[, input$target]), predict(runModel(), select(df, one_of(input$featureSelect))))))
-      }
+      else
+        plot(roc(as.numeric(truthes), predictions))
     })
   }
 )
-
