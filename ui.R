@@ -78,7 +78,6 @@ shinyUI(
       ),
 
       # show data summary of all data - give options to see raw or processed data
-      # TODO need doc as to what you are looking at
       # separate outcomes from predictors
       tabPanel('2. Data Summary',
         titlePanel(p("Data Summary", style = "color:#3474A7")),
@@ -94,6 +93,7 @@ shinyUI(
           mainPanel(
             h4('Features'),
             tableOutput('PredictorsSummaryOut'),
+            br(), br(),
             h4('Target'),
             tableOutput('OutcomeSummaryOut')
           )
@@ -136,7 +136,7 @@ shinyUI(
               multiple=TRUE
             ),
             uiOutput('featureSelectInput'),
-            sliderInput("fracTrain", label = h4("Train Split %"), min=10, max=100, value=75),
+            sliderInput("fracTrain", label = h4("Train Split %"), min=10, max=100, value=75, step=10),
             br(),
             radioButtons('mltype', "Choose the type of Machine Learning:",
                          choices = c("Regression"="reg", "Classification"="clf"), 
@@ -169,6 +169,7 @@ shinyUI(
             wellPanel(
               h4('Estimated Out of Sample Accuracy (within verification data)'),
               verbatimTextOutput('outOfSampleAccuracy'),
+
               plotOutput("outOfSamplePlot")
             )
           )
