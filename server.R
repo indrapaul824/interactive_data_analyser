@@ -187,7 +187,7 @@ shinyServer(
                     'Select the model or machine learning algorithm',
                     choices= c('K-Nearest Neighbors' = 'knn',
                                'Generalized Linear Model (logit)' = 'glm',
-                               'Random Forests (may take a few minutes)' = 'ranger',
+                               'Random Forests (may take a few minutes)' = 'rf',
                                'Gradient Boosting' = 'gbm',
                                'Boosted Generalized Linear Model' = 'glmboost',
                                'Linear Discriminant Analysis' = 'lda',
@@ -255,14 +255,14 @@ shinyServer(
     # if summary(fit) has names, use it, if not, do not
     output$summaryModel <- renderPrint({
       if (!is.null(names(summary(runModel()))))
-        summary(runModel())
+        print(summary(runModel()))
       else
         'Same as Final Model Fit above'
-    })
+    }, width = 10000)
     # summary of final model
     output$finalModel <- renderPrint({
-      runModel()
-    })
+      print(runModel())
+    }, width = 10000)
 
     ## Prediction Model Evaluation
     evalModel <- function(testData, features) {
@@ -270,7 +270,7 @@ shinyServer(
       truthes <- testData[, input$target]
       # generate confusion matrix
       if (input$mltype == "clf") {
-        confusionMatrix(predictions, as.factor(truthes))
+        print(confusionMatrix(predictions, as.factor(truthes)))
       }
       else {
         # Convert target variable from factor to numeric
@@ -285,8 +285,8 @@ shinyServer(
         mase <- mean(abs(truthes - predictions))/mean(abs(diff(truthes)))
         # calculate adjusted R^2
         adjr2 <- 1 - (1 - r2)*(nrow(testData) - 1)/(nrow(testData) - length(features) - 1)
-        # return results
-        c(rmse, r2, mae, mase, adjr2)
+        # return a data frame
+        print(data.frame("RMSE"=rmse, "R2"=r2, "MAE"=mae, "MASE"=mase, "AdjR2"=adjr2))
       }
     }
 
@@ -301,7 +301,7 @@ shinyServer(
       else
         df
       evalModel(df, input$featureSelect)
-    })
+    }, width = 10000)
 
     output$inSamplePlot <- renderPlot({
       df <- trainData()
@@ -321,11 +321,19 @@ shinyServer(
       if (input$mltype == "clf") {
         # plot confusion matrix
         cm <- conf_mat(truth_predicted, obs, pred)
-        autoplot(cm, type='heatmap', scale_fill_gradient(low="#D6EAF8",high = "#2E86C1"), 
-         legend.position = "bottom", legend.title = "Count")
+        autoplot(cm, type='heatmap', scale_fill_gradient(low="#D6EAF8",high = "#2E86C1")) + 
+          ggtitle("Confusion Matrix (Train)") +
+          theme(text = element_text(size=20), plot.title = element_text(hjust = 0.5))
       }
-      else
-        plot(roc(as.numeric(truthes), predictions))
+      else {
+        # Plot residuals vs fitted values using carat
+        ggplot(truth_predicted, aes(x=pred, y=obs)) +
+          geom_point() +
+          geom_abline(intercept=0, slope=1, color="red") +
+          labs(x="Predicted", y="Observed") +
+          ggtitle("Residuals vs Fitted Values (Train)") +
+          theme(text = element_text(size=20), plot.title = element_text(hjust = 0.5))
+      }
     })
 
 
@@ -340,7 +348,7 @@ shinyServer(
       else
         df
       evalModel(df, input$featureSelect)
-    })
+    }, width = 10000)
 
     output$outOfSamplePlot <- renderPlot({
       df <- testData()
@@ -360,11 +368,19 @@ shinyServer(
       if (input$mltype == "clf") {
         # plot confusion matrix
         cm <- conf_mat(truth_predicted, obs, pred)
-        autoplot(cm, type='heatmap', scale_fill_gradient(low="#D6EAF8",high = "#2E86C1"), 
-         legend.position = "bottom", legend.title = "Count")
+        autoplot(cm, type='heatmap', scale_fill_gradient(low="#D6EAF8",high = "#2E86C1")) + 
+          ggtitle("Confusion Matrix (Test)") +
+          theme(text = element_text(size=20), plot.title = element_text(hjust = 0.5))
       }
-      else
-        plot(roc(as.numeric(truthes), predictions))
+      else {
+        # Plot residuals vs fitted values using carat
+        ggplot(truth_predicted, aes(x=pred, y=obs)) +
+          geom_point() +
+          geom_abline(intercept=0, slope=1, color="red") +
+          labs(x="Predicted", y="Observed")  +
+          ggtitle("Residuals vs Fitted Values (Test)") +
+          theme(text = element_text(size=20), plot.title = element_text(hjust = 0.5))
+      }
     })
   }
 )
