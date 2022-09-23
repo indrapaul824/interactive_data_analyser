@@ -1,0 +1,87 @@
+```{r}
+df <- read.csv("./data/raw/framingham.csv")
+
+df
+```
+
+```{r}
+sampl <- sapply(df, class)
+sampl
+```
+
+```{r}
+library(psych)
+
+describe(df)
+```
+
+```{r}
+library(purrr)
+
+encode_ordinal <- function(x, order = unique(x)) {
+  x <- as.numeric(factor(x, levels = order, exclude = NULL))
+  x
+}
+
+colTypes <- map(df, class)
+
+for (col in colnames(df)) {
+  if (colTypes[col] == 'character') {
+    df[[col]] <- encode_ordinal(df[[col]])
+  }
+}
+
+df
+```
+
+```{r}
+df <- df[complete.cases(df),]
+df
+```
+
+```{r}
+as.factor(df$'TenYearCHD')
+```
+
+```{r}
+library(caret)
+
+df$'TenYearCHD' <- as.factor(df$'TenYearCHD')
+
+inTrain <- createDataPartition(as.factor('TenYearCHD'), times = 1, p = .75, list = F)
+data_train <- df[inTrain, ]
+data_test <- df[-inTrain, ]
+```
+
+```{r}
+logit <- train(as.factor(TenYearCHD)~., data = df, method = 'ranger', metric='Accuracy')
+logit
+```
+```{r}
+data_test$pred <- predict(logit, data_test)
+
+data_test$factor_pred <- as.factor(data_test$pred)
+data_test$factor_truth <- as.factor(data_test$TenYearCHD)
+
+precision <- posPredValue(data_test$factor_truth, data_test$factor_pred)
+recall <- sensitivity(data_test$factor_truth, data_test$factor_pred)
+
+cm <- confusionMatrix(data_test$pred, data_test$TenYearCHD)
+
+accuracy <- cm$overall[1]
+accuracy
+
+cm
+```
+
+```{r}
+predict <- predict(logit, data_test, type = 'response')
+# confusion matrix
+table_mat <- table(data_test$TenYearCHD, predict > 0.5)
+table_mat
+```
+
+```{r}
+accuracy_Test <- sum(diag(table_mat)) / sum(table_mat)
+accuracy_Test
+```
