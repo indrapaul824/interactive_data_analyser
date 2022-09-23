@@ -20,10 +20,13 @@ dependencies:
   - r-stargazer
   - r-tidyverse
   - r-rmarkdown
-  - r-maps
-  - r-leaflet
   - r-irkernel
   - r-languageserver
   - r-caret
   - r-ggplot2
   - r-corrplot
+  - r-gbm
+  - r-klar
+  - r-mboost
+  - r-psych
+  - t-purrr
