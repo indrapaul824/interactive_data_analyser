@@ -265,16 +265,10 @@ shinyServer(
     ## Prediction Model Evaluation
     evalModel <- function(testData, features) {
       predictions <- predict(runModel(), select(testData, one_of(features)))
-      # if length or predictions does not match length of testData, remove incomplete cases
-      if (length(predictions) != nrow(testData))
-        truthes <- testData[complete.cases(testData),]$input$target
-      else
-        truthes <- testData$input$target
+      truthes <- testData[, input$target]
       # generate confusion matrix
       if (input$mltype == "clf") {
-        # Convert target variable from numeric to factor
-        truthes <- as.factor(truthes)
-        confusionMatrix(predictions, truthes)
+        confusionMatrix(predictions, as.factor(truthes))
       }
       else {
         # Convert target variable from factor to numeric
@@ -285,20 +279,12 @@ shinyServer(
         r2 <- cor(truthes, predictions)^2
         # calculate MAE
         mae <- mean(abs(truthes - predictions))
-        # calculate MAPE
-        mape <- mean(abs((truthes - predictions)/truthes))
-        # calculate MPE
-        mpe <- mean((truthes - predictions)/truthes)
         # calculate MASE
         mase <- mean(abs(truthes - predictions))/mean(abs(diff(truthes)))
-        # calculate AIC
-        aic <- AIC(runModel())
-        # calculate BIC
-        bic <- BIC(runModel())
         # calculate adjusted R^2
         adjr2 <- 1 - (1 - r2)*(nrow(testData) - 1)/(nrow(testData) - length(features) - 1)
         # return results
-        c(rmse, r2, mae, mape, mpe, mase, aic, bic, adjr2)
+        c(rmse, r2, mae, mase, adjr2)
       }
     }
     #training data accuracy
@@ -313,6 +299,26 @@ shinyServer(
         df
       evalModel(df, input$featureSelect)
     })
+
+    output$inSampleAccuracyPlot <- renderPlot({
+      df <- trainData()
+      df <- if (input$mltype == "clf") {
+        # Convert target variable from numeric to factor
+        df[, input$target] <- as.factor(df[, input$target])
+        df
+      }
+      else
+        df
+      if (input$mltype == "clf") {
+        # plot confusion matrix
+        plot(confusionMatrix(predict(runModel(), select(df, one_of(input$featureSelect))), 
+          as.factor(df[, input$target])))
+      }
+      else {
+        # plot ROC curve
+        plot(roc(as.numeric(df[, input$target]), predict(runModel(), select(df, one_of(input$featureSelect)))))
+      }
+    })
     #testing data accuracy
     output$outOfSampleAccuracy <- renderPrint({
       df <- testData()
@@ -326,16 +332,25 @@ shinyServer(
       evalModel(df, input$featureSelect)
     })
 
-    # test data set predictions
-    output$testPredictions <- renderTable({
-      predictions <- predict(runModel(), select(dataInput()$pte, one_of(input$featureSelect)))
-      predictions <- cbind(dataInput()$pte$PassengerId, as.character(predictions))
-      colnames(predictions) <- c('PassengerId', 'Survived')
-      predictions
+    output$outOfSampleAccuracyPlot <- renderPlot({
+      df <- testData()
+      df <- if (input$mltype == "clf") {
+        # Convert target variable from numeric to factor
+        df[, input$target] <- as.factor(df[, input$target])
+        df
+      }
+      else
+        df
+      if (input$mltype == "clf") {
+        # plot confusion matrix
+        plot(confusionMatrix(predict(runModel(), select(df, one_of(input$featureSelect))), 
+          as.factor(df[, input$target])))
+      }
+      else {
+        # plot ROC curve
+        renderPlot(plot(roc(as.numeric(df[, input$target]), predict(runModel(), select(df, one_of(input$featureSelect))))))
+      }
     })
-
-
-
   }
 )
 
