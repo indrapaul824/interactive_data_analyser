@@ -119,7 +119,7 @@ shinyUI(
           )
         )
       ),
-     
+     # build model
       tabPanel('4. Build Prediction Model',
         sidebarLayout(
           sidebarPanel(
@@ -136,6 +136,16 @@ shinyUI(
               multiple=TRUE
             ),
             uiOutput('featureSelectInput'),
+            selectInput('fracTrain', 'Select the fraction of Training Data',
+              choices=c(
+                "90%" = 0.90,
+                "85%" = 0.85,
+                "80%" = 0.80,
+                "75%" = 0.75,
+                "70%" = 0.70
+              ),
+              selected=0.90
+            ),
             radioButtons('mltype', "Choose the type of Machine Learning:",
                          choices = c("Regression"="reg", "Classification"="clf"), 
                          selected = "reg"),

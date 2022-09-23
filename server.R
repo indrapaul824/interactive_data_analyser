@@ -193,9 +193,21 @@ shinyServer(
                     selected='knn')
     })
     
+    #split the data into train and test
+    newData <- reactive({
+      df <- data()
+      train_fr <- as.numeric(input$fracTrain)
+      test_fr  <- 1-train_fr
+      sample <- sample(c(TRUE, FALSE), nrow(df), replace=TRUE, prob=c(train_fr,test_fr))
+      train  <- df[sample, ]
+      test   <- df[!sample, ]
+      list(train = train,test = test)
+    })
+    
+
     # apply model to training set
     applyModel <- function(modelType, features) {
-      df <- data()
+      df <- newData()$train
       if (input$mltype == "clf") {
         # df$input$target <- as.factor(df$input$target)
         # Convert target variable from numeric to factor
@@ -276,19 +288,27 @@ shinyServer(
         c(rmse, r2, mae, mape, mpe, mase, aic, bic, adjr2)
       }
     }
-    # accuracy of final model
+    #training data accuracy
     output$inSampleAccuracy <- renderPrint({
       df <- if (input$mltype == "clf") {
         # Convert target variable from numeric to factor
-        data()[, input$target] <- as.factor(data()[, input$target])
-        data()
+        newData()$train[, input$target] <- as.factor(newData()$train[, input$target])
+        newData()$train
       }
       else
-        data()
+        newData()$train
       evalModel(df, input$featureSelect)
     })
+    #testing data accuracy
     output$outOfSampleAccuracy <- renderPrint({
-      evalModel(dataInput()$pv, input$featureSelect)
+      df <- if (input$mltype == "clf") {
+        # Convert target variable from numeric to factor
+        newData()$test[, input$target] <- as.factor(newData()$test[, input$target])
+        newData()$test
+      }
+      else
+        newData()$test
+      evalModel(df, input$featureSelect)
     })
 
     # test data set predictions
