@@ -2,7 +2,7 @@ library(shiny)
 library(DT)
 
 # constants
-github.url <- 'https://github.com/IndraP24/interactive_data_analyser'
+github.url <- 'https://github.com/indrapaul824/interactive_data_analyser'
 
 # Disable shiny widget, from:
 # https://groups.google.com/forum/#!topic/shiny-discuss/uSetp4TtW-s
